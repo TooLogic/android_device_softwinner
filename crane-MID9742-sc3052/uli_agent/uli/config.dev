@@ -1,0 +1,773 @@
+##############################################################################
+# Makefile                                                                   #
+# UpdateTV Test Makefile                                                     #
+# Can be called to make any of the tests that reside in the sdk/test dir.    #
+# Copyright (c) 2004 - 2011 UpdateLogic, Inc.  All rights reserved.          #
+##############################################################################
+# Revision History
+# (newest edits added to the top)
+#
+#  Who                      Date         Edit
+#  Bob Taylor               12/20/2011   New file-based provisioning define support.
+#  Jim Muchow               08/27/2010   Copy of the source/test/Makefile; can be copied to directory in which a CEM-specific
+#                                        version of LocalMakefile-generic will jump (mostly for reference and source control).
+#  Seb Emonet               05/12/2010   Removed the check related to PLATFORM_DELIVERY_BROADCAST to allow to use the project layer
+#  Jim Muchow               05/04/2010   Include TAGS target
+#  Bob Taylor               03/30/2010   Fixed current.cfg bug so that make works again.
+#  Bob Taylor               11/13/2009   New PROJECT and CEM dirs
+#  Bob Taylor               04/02/2009   New layout for 2.0
+#  Bob Taylor               02/23/2009   Added utvcore/pers/image header file dependencies for all objs.
+#  Bob Taylor               01/29/2009   Created from 1.9.21 for 2.0.
+#
+# You must define some combination of PLATFORM_DELIVERY_BROADCAST, PLATFORM_DELIVERY_INTERNET, or PLATFORM_DELIVERY_FILE.
+# These can be defined on the command line like "make PLATFORM_DELIVERY_BROADCAST=1" or in this file.
+#
+# The following global configuration compile-time defines are supported in this Makefile:
+#
+#   UTV_INTERACTIVE_MODE         --- When defined various routines related to driving the Agent interactively are enabled.  
+#                                    Enabled when TARGET=test-agent-im, TARGET=test-provisioner, and TARGET=test-factory.
+#                                    See the UpdateTV Agent API document for more information.
+#   
+#   UTV_FACTORY_DECRYPT_SUPPORT  --- When defined factory strength decryption will be supported.  See the 
+#                                    Enabled when TARGET=test-factory.
+#                                    UpdateTV Factory Update Guide for more information.
+#
+#   UTV_TEST_ABORT               ---  When defined compiles code that measures time to abort.
+#                                    Enabled when TEST_MODE=abort.
+#                                    Only applies to test-agent, test-agent-im, and test-factory.
+#
+#   UTV_CALLBACK_TEST            --- When defined various enables callback (async) version of test-agent-im and test-factory.
+#                                    Is a variant of Interactive Mode.
+#                                    Enabled when TARGET=test-agent-im and TARGET=test-factory.
+#                                    See the UpdateTV Agent API document for more information.
+#
+#   UTV_CORE_PACKET_FILTER       --- When defined causes MPEG TS packet parsing to be included in Agent.
+#                                    Enabled when PLATFORM_DATA_BROADCAST_STATIC or PLATFORM_DATA_BROADCAST_TS_FILE is defined.
+#                                    Used for testing only.  Not needed for production builds of Agent because CEM hardware 
+#                                    presents section tables to Agent, not packets.
+#
+#   UTV_OS_SINGLE_THREAD         --- When defined causes Agent to be built for single threaded mode for OS's that do not
+#                                    support threads.
+#                                    Enabled when PLATFORM_DATA_BROADCAST_TS_FILE is defined because it speeds up testing.
+#
+# The following targets can be built by this Makefile.  Except for test-agent which is the default target, use TARGET=test-xxxx to build.
+#
+#   test-agent                   --- The default test shell for the Agent.
+#   
+#   test-agent-im                --- Interactive Mode examples of exercising the Agent.
+#
+#   test-factory                 --- Factory update examples of exercising the Agent.
+#
+#   test-provisioner             --- Provisioner test utility.
+#
+#   test-section                 --- A simple test of the CEM's data source (tuner and section filter).
+#
+#   test-dump-dat                --- A program that dumps a file containing the Agent's persistent memory structure (like persistent-storage.dat).
+#
+# The following defines may also be set in this Makefile or overridden on the command line.
+#
+# PLATFORM_ARCH:	Machine architecture path used to locate arch-types.h that defines 
+#               type lengths.
+# PLATFORM_OS:		Operating System path used to locate all platform/os/operatingsystem files.
+# XDEFINES:     Extra constants to be defined
+# XCFLAGS:      Extra compiler flags
+# XINCDIR:      Extra include directories  
+# XLDFLAGS:     Extra flags used in link
+# XLIBS:        Extra Libs used in link
+# MAKEDIR:      Directory where this makefile is found.
+# SOURCEFILES:  List of source files to build
+#
+# Choose delivery modes, a module storage mechanism, data source.
+# Delivery Mode options, define one or any combination:  PLATFORM_DELIVERY_BROADCAST, PLATFORM_DELIVERY_INTERNET, PLATFORM_DELIVERY_FILE
+# Data Source options, define any one for a given delivery mode except for PLATFORM_DELIVERY_INTERNET which requires both
+# a clear and ssl source.
+#
+#    For Broadcast, one of the following:
+#        PLATFORM_DATA_BROADCAST_LINUX_DVBAPI
+#        PLATFORM_DATA_BROADCAST_TS_FILE
+#        PLATFORM_DATA_BROADCAST_STATIC
+#
+#    For Internet, you need both a clear and an SSL implementation:
+#
+#    One of the following for clear:
+#        PLATFORM_DATA_INTERNET_CLEAR_SOCKET
+#        PLATFORM_DATA_INTERNET_CLEAR_CUST
+#
+#    And one of the following for SSL:
+#        PLATFORM_DATA_INTERNET_SSL_OPENSSL
+#        PLATFORM_DATA_INTERNET_SSL_SOCKET
+#        PLATFORM_DATA_INTERNET_SSL_CUST
+#
+#
+# Architecture options (PLATFORM_ARCH): 32BIT
+# Architecture options (PLATFORM_OS): linux
+# Defaults:
+#
+#TARGET = test-agent-project
+# these ifndefs are some of the initial steps to enable running from "remote"
+# Makefiles (see cem/FFFFFA-0004/Makefile for an example)
+ifdef PROJECT
+$(warning PROJECT defined externally)
+else
+PROJECT = generic
+endif
+ifdef CEM
+$(warning CEM defined externally)
+else
+CEM = XXXXXX-YYYY
+endif
+PLATFORM_DELIVERY_FILE=1
+#PLATFORM_DELIVERY_BROADCAST=1
+PLATFORM_DELIVERY_INTERNET=1
+PLATFORM_DATA_BROADCAST_TS_FILE=1
+#PLATFORM_DATA_BROADCAST_LINUX_DVBAPI=1
+#PLATFORM_DATA_BROADCAST_STATIC=1
+PLATFORM_DATA_INTERNET_SSL_OPENSSL=1
+PLATFORM_DATA_INTERNET_CLEAR_SOCKET=1
+PLATFORM_PROVISIONER=1
+PLATFORM_ARCH = 32BIT
+#PLATFORM_OS = linux
+#PLATFORM_BUILD_ENV = linux_x86
+#PLATFORM_BUILD_ENV = linux_mipsel_brcm3549
+THREAD_MODEL = multi
+
+##############################################################################################
+# Local Support
+##############################################################################################
+# Uncomment the defines in the "else" below to enable the Local Support feature.
+
+ifdef PLATFORM_LOCAL_SUPPORT
+$(warning PLATFORM_LOCAL_SUPPORT defined externally)
+else
+#PLATFORM_LOCAL_SUPPORT=1
+endif
+
+# If Local Support is eabled, enable it's dependencies
+ifdef PLATFORM_LOCAL_SUPPORT
+PLATFORM_JSON=1
+endif
+
+##############################################################################################
+# LIVE SUPPORT
+##############################################################################################
+# Uncomment the defines in the "else" below to enable the Live Support feature (video
+# secure/unsecure optional).
+
+ifdef PLATFORM_LIVE_SUPPORT
+$(warning PLATFORM_LIVE_SUPPORT defined externally)
+else
+#PLATFORM_LIVE_SUPPORT=1
+endif
+
+ifdef PLATFORM_LIVE_SUPPORT_VIDEO
+$(warning PLATFORM_LIVE_SUPPORT_VIDEO defined externally)
+else
+#PLATFORM_LIVE_SUPPORT_VIDEO=1
+endif
+
+ifdef PLATFORM_LIVE_SUPPORT_VIDEO_SECURE
+$(warning PLATFORM_LIVE_SUPPORT_VIDEO_SECURE defined externally)
+else
+#PLATFORM_LIVE_SUPPORT_VIDEO_SECURE=1
+endif
+
+# If Live Support Video Secure is enabled, enable it's dependencies
+ifdef PLATFORM_LIVE_SUPPORT_VIDEO_SECURE
+PLATFORM_LIVE_SUPPORT_VIDEO=1
+endif
+
+# If Live Support Video is enabled, enable it's dependencies
+ifdef PLATFORM_LIVE_SUPPORT_VIDEO
+PLATFORM_GSTREAMER=1
+PLATFORM_LIVE_SUPPORT=1
+endif
+
+# If Live Support is enabled, enable it's dependencies
+ifdef PLATFORM_LIVE_SUPPORT
+PLATFORM_JSON=1
+PLATFORM_DEVICE_WEB_SERVICE=1
+endif
+
+##############################################################################################
+# DEVICE WEB SERVER
+##############################################################################################
+# Uncomment the defines in the "else" below to enable the Device Web Server feature.
+
+ifdef PLATFORM_WEBSERVER
+$(warning PLATFORM_WEBSERVER defined externally)
+else
+#PLATFORM_WEBSERVER=1
+endif
+
+# If Device Web Server is enabled, enable it's dependencies
+ifdef PLATFORM_WEBSERVER
+PLATFORM_JSON=1
+PLATFORM_DEVICE_WEB_SERVICE=1
+endif
+
+##############################################################################################
+# PROVISIONING TYPE - controls the type of provisioning supported
+##############################################################################################
+# by default the provisioning type in Android is file-based for better security
+ifdef PLATFORM_FILE_BASED_PROVISIONING
+$(warning PLATFORM_FILE_BASED_PROVISIONING defined externally)
+else
+PLATFORM_FILE_BASED_PROVISIONING=1
+endif
+
+ifdef PLATFORM_FILE_BASED_PROVISIONING
+XDEFINES += UTV_FILE_BASED_PROVISIONING
+endif
+
+##############################################################################################
+# UTV_PRODUCTION_BUILD - controls where the ULPK comes from and other parameters
+##############################################################################################
+# By default the compile-time define UTV_PRODUCTION_BUILD is defined.
+# It controls where the actual ULPK used by the system comes from.  
+# When defined then the ULPK will come from the factory path 
+# defined by UTV_PLATFORM_INTERNET_ULPK_FNAME.
+# If not defined then the ULPK will come from the development read-only path #
+# defined by UTV_PLATFORM_INTERNET_READ_ONLY_ULPK_FNAME.
+# This allows the functions UtvPlatformSecureInsertULPK() and UtvPlatformSecureGetULPKIndex() to 
+# always deal with the factory path even if an engineering build pointed at the extdev NOC
+# using ULPK zero is running.  This is helpful in factory insertion scenarios.
+ifdef PLATFORM_PRODUCTION_BUILD
+XDEFINES += UTV_PRODUCTION_BUILD
+$(warning This is a PRODUCTION build)
+else
+$(warning This is a DEVELOPMENT build)
+endif
+
+# build type: DEBUG or RELEASE
+#VERSION = RELEASE
+#VERSION = DEBUG
+
+ifdef VERSION
+$(warning config.dev VERSION defined externally)
+else
+VERSION = DEBUG
+endif
+
+# The Linux DVB header files aren't strictly ANSI compliant.  
+# TurnUTV_PLATFORM_CURRENT_SW_VER off the ANSI compliance check when compiling for the LINUX_DVBAPI data source
+ifndef PLATFORM_DATA_BROADCAST_LINUX_DVBAPI
+# undefining __STRICT_ANSI__, which is defined automatically by -ansi, so that necessary function prototypes
+# are not excluded from system include files.
+XCFLAGS_DEBUG =  -ggdb -Wall -ansi -pedantic -Wno-variadic-macros -U__STRICT_ANSI__
+XCFLAGS_RELEASE = -O3 -ansi -pedantic -Wno-variadic-macros -U__STRICT_ANSI__
+else
+XCFLAGS_DEBUG =  -ggdb -Wall -pedantic -Wno-variadic-macros
+XCFLAGS_RELEASE = -O3 -pedantic -Wno-variadic-macros
+endif
+
+# Tell platform-config.h that a number of things will be defined here in the Makefile
+XDEFINES += UTV_STD_MAKE
+
+# All 2.0 code at this point is run in interactive mode
+XDEFINES += UTV_INTERACTIVE_MODE
+
+# Cygwin doesn't like these definitions
+ifneq "$(PLATFORM_BUILD_ENV)" "cygwin"
+XDEFINES += POSIX __linux__
+endif
+
+ifndef BASEMAKEDIR
+BASEMAKEDIR = $(shell pwd)/..
+endif
+
+MAKEDIR = $(BASEMAKEDIR)/$(TARGET)
+
+ifndef INC_DIR
+INC_DIR = $(BASEMAKEDIR)/inc
+endif
+
+ifndef CORE_COMMON_DIR
+CORE_COMMON_DIR = $(BASEMAKEDIR)/core/common
+endif
+
+ifndef CORE_BROADCAST_DIR
+CORE_BROADCAST_DIR = $(BASEMAKEDIR)/core/broadcast
+endif
+
+ifndef CORE_INTERNET_DIR
+CORE_INTERNET_DIR = $(BASEMAKEDIR)/core/internet
+endif
+
+ifndef CORE_FILE_DIR
+CORE_FILE_DIR = $(BASEMAKEDIR)/core/file
+endif
+
+ifndef PLATFORM_DIR
+PLATFORM_DIR = $(BASEMAKEDIR)/platform
+endif
+
+ifdef CEM_DIR
+$(warning CEM_DIR defined externally)
+else
+CEM_DIR = $(BASEMAKEDIR)/cem/$(CEM)
+endif
+
+ifndef PLATFORM_OS_DIR
+PLATFORM_OS_DIR = $(PLATFORM_DIR)/os/$(PLATFORM_OS)
+endif
+
+ifndef PLATFORM_DATA_DIR
+PLATFORM_DATA_DIR = $(BASEMAKEDIR)/platform/data
+endif
+
+ifndef TA_DIR
+TA_DIR = $(BASEMAKEDIR)/test
+endif
+
+ifndef PROJECT_DIR
+PROJECT_DIR = $(BASEMAKEDIR)/project
+endif
+
+# Configure the third party directory if it is required by the desired features.  The third
+# party directory is required by gSOAP and JSON (and those that depend on them).
+# Error out if the directory cannot be found.
+ifndef THIRD_PARTY_DIR
+  THIRD_PARTY_DIR = $(shell if [ -d $(BASEMAKEDIR)/thirdparty ]; \
+                            then echo "$(BASEMAKEDIR)/thirdparty"; \
+                            elif [ -d $(BASEMAKEDIR)/../../../vendor ]; \
+                            then echo "$(BASEMAKEDIR)/../../../vendor"; fi )
+
+  ifeq "$(THIRD_PARTY_DIR)" ""
+    $(error THIRD_PARTY_DIR not defined)
+  endif
+endif
+
+ifndef GSOAP_DIR
+GSOAP_DIR = $(THIRD_PARTY_DIR)/gsoap/2.7
+endif    
+
+ifndef JSON_DIR
+JSON_DIR = $(THIRD_PARTY_DIR)/cjson/33
+endif
+
+ifndef WEBSERVICES_DIR
+WEBSERVICES_DIR = $(CORE_INTERNET_DIR)/webservices
+endif
+
+ifndef DEVICEWEBSERVICE_DIR
+DEVICEWEBSERVICE_DIR = $(CORE_INTERNET_DIR)/webservices
+endif
+
+XINCDIR += $(BASEMAKEDIR)/inc 
+XINCDIR += $(PLATFORM_DIR)
+XINCDIR += $(PLATFORM_OS_DIR)
+XINCDIR += $(PROJECT_DIR)
+XINCDIR += $(CEM_DIR)
+ifdef PLATFORM_DATA_BROADCAST_LINUX_DVBAPI
+XINCDIR += /usr/include/linux/dvb
+endif
+
+ifeq "$(VERSION)" "RELEASE"
+    XCFLAGS += $(XCFLAGS_RELEASE)
+else
+    XCFLAGS += $(XCFLAGS_DEBUG)
+    XDEFINES += UTV_DEBUG 
+    XDEFINES += UTV_PROVISIONER_DEBUG
+#   Define the log file here; comment it out if you don't want a log file.
+#   Usage: no pathname given, file will be created in the same directory
+#   as this app (it is the platform-XXX-debug.c files that use this)
+#    XDEFINES += UTV_TEST_LOG_FNAME='"test.log"'
+#    XDEFINES += UTV_TEST_LOG_FNAME='"/sdcard/ULI/test.log"'
+endif
+
+# create a define for the CEM
+XDEFINES += UTV_TARGET_CEM='"cem-$(CEM).h"'
+
+# create a define for the PROJECT
+XDEFINES += UTV_TARGET_PROJECT='"project-$(PROJECT).h"'
+
+# Establish the base common core, common pers, OS, and target source files.
+SOURCEFILES =  \
+    $(CORE_COMMON_DIR)/core-common-compatibility.c \
+    $(CORE_COMMON_DIR)/core-common-control.c \
+    $(CORE_COMMON_DIR)/core-common-state.c \
+    $(CORE_COMMON_DIR)/core-common-unattended.c \
+    $(CORE_COMMON_DIR)/core-common-interactive.c \
+    $(CORE_COMMON_DIR)/core-common-manifest.c \
+    $(CORE_COMMON_DIR)/core-common-image.c \
+    $(CEM_DIR)/cem-strings-$(CEM).c \
+    $(PLATFORM_DIR)/platform-utility.c \
+    $(PLATFORM_DIR)/platform-persist.c \
+    $(PLATFORM_DIR)/platform-store.c \
+    $(PLATFORM_DIR)/platform-install.c \
+    $(PLATFORM_OS_DIR)/platform-os-$(PLATFORM_OS)-memory.c \
+    $(PLATFORM_OS_DIR)/platform-os-$(PLATFORM_OS)-mutex.c \
+    $(PLATFORM_OS_DIR)/platform-os-$(PLATFORM_OS)-thread.c \
+    $(PLATFORM_OS_DIR)/platform-os-$(PLATFORM_OS)-time.c \
+    $(PLATFORM_OS_DIR)/platform-os-$(PLATFORM_OS)-execute.c \
+    $(PLATFORM_OS_DIR)/platform-os-$(PLATFORM_OS)-file.c \
+    $(PROJECT_DIR)/project-$(PROJECT).c \
+ #   $(TA_DIR)/$(TARGET).c
+
+# Add in the private library files.
+#SOURCEFILES += \
+#    $(CORE_COMMON_DIR)/core-common-decrypt.c \
+#    $(CORE_COMMON_DIR)/core-common-largeinteger.c
+
+# Add in core support for each of the chosen delivery methods
+
+# Broadcast
+ifdef PLATFORM_DELIVERY_BROADCAST
+    XDEFINES += UTV_DELIVERY_BROADCAST
+    SOURCEFILES += $(CORE_BROADCAST_DIR)/core-broadcast-channel.c
+    SOURCEFILES += $(CORE_BROADCAST_DIR)/core-broadcast-carousel.c
+    SOURCEFILES += $(CORE_BROADCAST_DIR)/core-broadcast-download.c
+    SOURCEFILES += $(CORE_BROADCAST_DIR)/core-broadcast-parse.c
+    SOURCEFILES += $(CORE_BROADCAST_DIR)/core-broadcast-packetfilter.c
+    SOURCEFILES += $(CORE_BROADCAST_DIR)/core-broadcast-sectionfilter.c
+    SOURCEFILES += $(CORE_BROADCAST_DIR)/core-broadcast-time.c
+    SOURCEFILES += $(CORE_BROADCAST_DIR)/core-broadcast-image.c
+endif
+
+# Internet
+ifdef PLATFORM_DELIVERY_INTERNET
+    XDEFINES += UTV_DELIVERY_INTERNET
+    SOURCEFILES += $(CORE_INTERNET_DIR)/core-internet-image.c
+
+# Add in the private library files
+#    SOURCEFILES += $(CORE_INTERNET_DIR)/core-internet-manage.c
+#    SOURCEFILES += $(CORE_INTERNET_DIR)/core-internet-msg-protocol.c
+#    SOURCEFILES += $(CORE_INTERNET_DIR)/core-internet-provisioner.c
+endif
+
+# File
+ifdef PLATFORM_DELIVERY_FILE
+    XDEFINES += UTV_DELIVERY_FILE
+endif
+
+ifdef PLATFORM_JSON
+    XDEFINES += UTV_JSON
+    XINCDIR += $(JSON_DIR)
+endif
+
+ifdef PLATFORM_DEVICE_WEB_SERVICE
+    PLATFORM_USE_C99=1
+
+    XDEFINES += UTV_DEVICE_WEB_SERVICE
+    XDEFINES += UTV_WEBSERVICES
+    XDEFINES += UTV_GSOAP
+    XDEFINES += WITH_NOEMPTYSTRUCT
+    XDEFINES += WITH_NONAMESPACES
+    XDEFINES += WITH_OPENSSL
+    XDEFINES += WITH_GZIP
+    XDEFINES += WITH_COOKIES
+    XDEFINES += GSOAP_SSL_ALLOW_HOST_ENDING_MATCH
+
+    ifdef PLATFORM_DATA_INTERNET_SSL_OPENSSL
+        XDEFINES += UTV_DEVICEWEBSERVICE_OPENSSL
+    endif
+
+    XINCDIR += $(GSOAP_DIR)/gsoap
+    XINCDIR += $(GSOAP_DIR)/gsoap/plugin
+    XINCDIR += $(WEBSERVICES_DIR)
+    XINCDIR += $(DEVICEWEBSERVICE_DIR)
+endif
+
+ifeq "$(VERSION)" "DEBUG"
+    SOURCEFILES += $(PLATFORM_OS_DIR)/platform-os-$(PLATFORM_OS)-debug.c
+	SOURCEFILES += $(PLATFORM_DIR)/platform-debug.c
+endif
+
+SOURCEFILES_DATA_BROADCAST_LINUX_DVBAPI = \
+    $(PLATFORM_DATA_DIR)/broadcast/linux-dvbapi/platform-data-broadcast-linux-dvbapi.c
+
+SOURCEFILES_DATA_BROADCAST_TS_FILE = \
+    $(PLATFORM_DATA_DIR)/broadcast/ts-file/platform-data-broadcast-ts-file.c
+
+SOURCEFILES_DATA_BROADCAST_STATIC = \
+    $(PLATFORM_DATA_DIR)/broadcast/static/platform-data-broadcast-static.c \
+    $(PLATFORM_DATA_DIR)/broadcast/static/platform-data-broadcast-static-section.c
+
+SOURCEFILES_DATA_INTERNET_COMMON = \
+    $(PLATFORM_DATA_DIR)/internet/common/platform-data-internet-common.c
+
+SOURCEFILES_DATA_INTERNET_CLEAR_SOCKET = \
+    $(PLATFORM_DATA_DIR)/internet/clear/socket/platform-data-internet-clear-socket.c
+
+SOURCEFILES_DATA_INTERNET_CLEAR_CUST = \
+    $(PLATFORM_DATA_DIR)/internet/clear/cust/platform-data-internet-clear-cust.c
+
+SOURCEFILES_DATA_INTERNET_SSL_OPENSSL = \
+    $(PLATFORM_DATA_DIR)/internet/ssl/openssl/platform-data-internet-ssl-openssl.c
+
+SOURCEFILES_DATA_INTERNET_SSL_SOCKET = \
+    $(PLATFORM_DATA_DIR)/internet/ssl/socket/platform-data-internet-ssl-socket.c
+
+SOURCEFILES_DATA_INTERNET_SSL_CUST = \
+    $(PLATFORM_DATA_DIR)/internet/ssl/cust/platform-data-internet-ssl-cust.c
+
+SOURCEFILES_DATA_FILE_COMMON = \
+    $(PLATFORM_DATA_DIR)/file/common/platform-data-file-common.c
+
+SOURCEFILES_CONFIG_DEPENDENT = \
+    $(CORE_COMMON_DIR)/core-common-control.c \
+    $(CORE_COMMON_DIR)/core-common-state.c \
+    $(PLATFORM_DIR)/platform-debug.c \
+    $(PLATFORM_DATA_DIR)/broadcast/linux-dvbapi/platform-data-linux-dvbapi.c \
+    $(PLATFORM_DATA_DIR)/broadcast/ts-file/platform-data-ts-file.c \
+    $(PLATFORM_DATA_DIR)/broadcast/static/platform-data-static-section.c \
+    $(PLATFORM_DIR)/platform-utility.c \
+    $(PLATFORM_OS_DIR)/platform-os-$(PLATFORM_OS)-time.c
+
+ifdef PLATFORM_GSTREAMER
+    PLATFORM_USE_C99=1
+
+    XINCDIR += /usr/include/libxml2
+    XINCDIR += /usr/include/glib-2.0
+    XINCDIR += /usr/lib/glib-2.0/include
+    XINCDIR += /usr/include/gstreamer-0.10
+endif
+
+# Configure the make system to support building the web server.
+ifdef PLATFORM_WEBSERVER
+    WEBSERVER_DIR = $(CORE_INTERNET_DIR)/webserver
+
+    XDEFINES += UTV_WEBSERVER
+
+    XINCDIR += $(WEBSERVER_DIR)
+
+    SOURCEFILES += $(WEBSERVER_DIR)/webserver_webserver.c
+    SOURCEFILES += $(WEBSERVER_DIR)/webserver_webserviceServerLib.c
+    SOURCEFILES += $(WEBSERVER_DIR)/webserver_uli_post_handler.c
+    SOURCEFILES += $(GSOAP_DIR)/gsoap/plugin/logging.c
+    SOURCEFILES += $(GSOAP_DIR)/gsoap/plugin/httpform.c
+    SOURCEFILES += $(GSOAP_DIR)/gsoap/plugin/httpget.c
+    SOURCEFILES += $(GSOAP_DIR)/gsoap/plugin/httpda.c
+    SOURCEFILES += $(GSOAP_DIR)/gsoap/plugin/md5evp.c
+    SOURCEFILES += $(GSOAP_DIR)/gsoap/plugin/threads.c
+endif
+
+# Configure the make system to support building the Live Support feature(s).
+ifdef PLATFORM_LIVE_SUPPORT
+    PLATFORM_GET_NETWORK=1
+    LIVE_SUPPORT_DIR = $(CORE_INTERNET_DIR)/livesupport
+
+    XDEFINES += UTV_LIVE_SUPPORT
+
+    ifdef PLATFORM_WEBSERVER
+      XDEFINES += UTV_LIVE_SUPPORT_WEB_SERVER
+    endif
+
+    SOURCEFILES += $(PLATFORM_OS_DIR)/platform-os-$(PLATFORM_OS)-getsystemstats.c
+    SOURCEFILES += $(LIVE_SUPPORT_DIR)/livesupport.c
+    SOURCEFILES += $(LIVE_SUPPORT_DIR)/livesupport-task.c
+
+    ifdef PLATFORM_LIVE_SUPPORT_VIDEO
+        XDEFINES += UTV_LIVE_SUPPORT_VIDEO
+
+        SOURCEFILES += $(LIVE_SUPPORT_DIR)/livesupport-video.c
+    endif
+
+    ifdef PLATFORM_LIVE_SUPPORT_VIDEO_SECURE
+        XDEFINES += UTV_LIVE_SUPPORT_VIDEO_SECURE
+    endif
+endif
+
+# Configure the make system to support building the Local Support feature(s).
+ifdef PLATFORM_LOCAL_SUPPORT
+    PLATFORM_GET_NETWORK=1
+
+    XDEFINES += UTV_LOCAL_SUPPORT
+
+    ifdef PLATFORM_WEBSERVER
+      XDEFINES += UTV_LOCAL_SUPPORT_WEB_SERVER
+    endif
+endif
+
+# Configure the make system to add the network information retrieval
+ifdef PLATFORM_GET_NETWORK
+    SOURCEFILES += $(PLATFORM_OS_DIR)/platform-os-$(PLATFORM_OS)-getnetwork.c
+endif
+
+# Configure the make system to use C99 if necessary.
+ifdef PLATFORM_USE_C99
+    XCFLAGS_DEBUG += -std=c99
+    XCFLAGS_RELEASE += -std=c99
+endif
+
+# ------------------------------------------------------------------
+# Data Source Specific Configuration 
+# ------------------------------------------------------------------
+
+# BROADCAST - only one of these at a time
+
+ifdef PLATFORM_DELIVERY_BROADCAST
+ifdef PLATFORM_DATA_BROADCAST_STATIC
+    XDEFINES += UTV_PLATFORM_DATA_BROADCAST_STATIC
+# Need to include packet filter because this data source
+# requires the call UtvCrc32() to set the CRC of the sections it generates.
+    XDEFINES += UTV_CORE_PACKET_FILTER
+# required to reduce default scan time
+	XDEFINES += UTV_TEST_DISCARD_LONG_WAITS
+# uncomment this line out for single thread test
+#    XDEFINES += UTV_OS_SINGLE_THREAD
+    SOURCEFILES += $(SOURCEFILES_DATA_BROADCAST_STATIC)
+endif
+
+ifdef PLATFORM_DATA_BROADCAST_TS_FILE
+    XDEFINES += UTV_PLATFORM_DATA_BROADCAST_TS_FILE
+# Need to include packet filter because this data source
+# delivers packets not sections unlike the others.
+    XDEFINES += UTV_CORE_PACKET_FILTER
+# Define a single test frequency so that the list isn't scanned.
+#    XDEFINES += UTV_TEST_FREQUENCY=0
+# required to reduce default scan time
+    XDEFINES += UTV_TEST_DISCARD_LONG_WAITS
+# add TS file source
+    SOURCEFILES += $(SOURCEFILES_DATA_BROADCAST_TS_FILE)
+    XDEFINES += UTV_OS_SINGLE_THREAD
+endif
+
+ifdef PLATFORM_DATA_BROADCAST_LINUX_DVBAPI
+    XDEFINES += UTV_PLATFORM_DATA_BROADCAST_LINUX_DVBAPI
+    SOURCEFILES += $(SOURCEFILES_DATA_BROADCAST_LINUX_DVBAPI)
+#    XDEFINES += UTV_OS_SINGLE_THREAD
+endif
+
+endif
+
+# INTERNET - Common - always include this
+
+ifdef PLATFORM_DELIVERY_INTERNET
+	SOURCEFILES += $(SOURCEFILES_DATA_INTERNET_COMMON)
+
+# INTERNET - SSL - only one of these at a time
+
+ifdef PLATFORM_DATA_INTERNET_SSL_OPENSSL
+    XDEFINES += UTV_PLATFORM_DATA_INTERNET_SSL_OPENSSL
+    SOURCEFILES += $(SOURCEFILES_DATA_INTERNET_SSL_OPENSSL)
+#    XDEFINES += UTV_OS_SINGLE_THREAD
+endif
+
+ifdef PLATFORM_DATA_INTERNET_SSL_SOCKET
+    XDEFINES += UTV_PLATFORM_DATA_INTERNET_SSL_SOCKET
+    SOURCEFILES += $(SOURCEFILES_DATA_INTERNET_SSL_SOCKET)
+#    XDEFINES += UTV_OS_SINGLE_THREAD
+endif
+
+ifdef PLATFORM_DATA_INTERNET_SSL_CUST
+    XDEFINES += UTV_PLATFORM_DATA_INTERNET_SSL_CUST
+    SOURCEFILES += $(SOURCEFILES_DATA_INTERNET_SSL_CUST)
+#    XDEFINES += UTV_OS_SINGLE_THREAD
+endif
+
+# INTERNET - Clear - only one of these at a time
+
+ifdef PLATFORM_DATA_INTERNET_CLEAR_SOCKET
+    XDEFINES += UTV_PLATFORM_DATA_INTERNET_CLEAR_SOCKET
+    SOURCEFILES += $(SOURCEFILES_DATA_INTERNET_CLEAR_SOCKET)
+#    XDEFINES += UTV_OS_SINGLE_THREAD
+endif
+
+ifdef PLATFORM_DATA_INTERNET_CLEAR_CUST
+    XDEFINES += UTV_PLATFORM_DATA_INTERNET_CLEAR_CUST
+    SOURCEFILES += $(SOURCEFILES_DATA_INTERNET_CLEAR_CUST)
+#    XDEFINES += UTV_OS_SINGLE_THREAD
+endif
+
+endif
+
+# ------------------------------------------------------------------
+# Provisioner Specific Configuration 
+# ------------------------------------------------------------------
+ifdef PLATFORM_PROVISIONER
+    XDEFINES += UTV_PLATFORM_PROVISIONER
+endif
+
+# -------------------------------------------------------------------
+# Test-specific Configurations for tests requiring extra source files
+# -------------------------------------------------------------------
+ifeq "$(TEST_MODE)" "abort"
+    XDEFINES += UTV_TEST_ABORT
+    SOURCEFILES += $(TA_DIR)/test-abort.c
+endif
+
+ifeq "$(TARGET)" "test-agent-im"
+ifeq "$(TEST_MODE)" "callback"
+    XDEFINES += UTV_CALLBACK_TEST
+endif
+endif
+
+ifeq "$(TARGET)" "test-factory"
+    XDEFINES += UTV_FACTORY_DECRYPT_SUPPORT
+ifeq "$(TEST_MODE)" "callback"
+    XDEFINES += UTV_CALLBACK_TEST
+endif
+endif
+
+ifeq "$(TARGET)" "test-control"
+    SOURCEFILES += $(TA_DIR)/command.c
+    SOURCEFILES += $(TA_DIR)/socket.c
+endif
+
+# ------------------------------------------------------------------
+# Misc. Configuration 
+# ------------------------------------------------------------------
+ifeq "$(PLATFORM_ARCH)" "32BIT"
+	XINCDIR += $(PLATFORM_DIR)/arch/32bit
+endif
+
+#ifeq "$(VERSION)" "RELEASE"
+#	XLIBS += -L../lib/$(PLATFORM_BUILD_ENV)/release/$(THREAD_MODEL)
+#else
+#	XLIBS += -L../lib/$(PLATFORM_BUILD_ENV)/debug/$(THREAD_MODEL)
+#endif
+#XLIBS += -lutvprivate
+
+#XLIBS += -lpthread
+#ifdef PLATFORM_DATA_INTERNET_SSL_OPENSSL
+#XLIBS += -lssl -lcrypto
+#endif
+
+#ifdef PLATFORM_DATA_INTERNET_SSL_SOCKET
+#XLIBS += -lssl -lcrypto
+#endif
+
+##############################################################################################
+# ULI LIVE SUPPORT
+##############################################################################################
+# The vendor cJSON code requires the math library so add it to the list of libraries.
+#ifdef PLATFORM_JSON
+#    XLIBS += -lm
+#    XLIBS += -luuid
+#endif
+#
+#ifdef PLATFORM_DEVICE_WEB_SERVICE
+#    XLIBS += -lz
+#endif
+
+ifdef PLATFORM_GSTREAMER
+#    XLIBS += -L/usr/lib/gstreamer-0.10
+
+#    XLIBS += -lz
+#    XLIBS += -lxml2
+#    XLIBS += -lglib-2.0
+#    XLIBS += -lgmodule-2.0
+#    XLIBS += -lgobject-2.0
+#    XLIBS += -lgthread-2.0
+#    XLIBS += -lgio-2.0
+#    XLIBS += -lgstreamer-0.10
+#    XLIBS += -lgstbase-0.10
+#    XLIBS += -lgstcheck-0.10
+#    XLIBS += -lgstcontroller-0.10
+#    XLIBS += -lgstdataprotocol-0.10
+#    XLIBS += -lgstnet-0.10
+#    XLIBS += -loil-0.3
+#    XLIBS += -lgstvideo-0.10
+#    XLIBS += -lgstapp-0.10
+#    XLIBS += -lgstcoreelements
+#    XLIBS += -lgstffmpegcolorspace
+#    XLIBS += -lgstjpeg
+#    XLIBS += -lgsttcp
+#    XLIBS += -lgstvideoscale
+#    XLIBS += -lgstapp
+endif
+##############################################################################################
+# ULI LIVE SUPPORT
+##############################################################################################
+

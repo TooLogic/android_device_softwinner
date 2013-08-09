@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 
+1.6.36: Fixed the focus issue to allow the user to control the UI with the remote control. (ZWC-152747)
+        Check if the system service POWER_SERVICE is missing. (YAD-581981)
+1.6.37: The buttons now use the android style. This solve the focus problem.
+-->
+<resources>
+    
+<string name="app_name">Update Service</string>
+    <string name="service_created">ULI Service created.</string>
+    <string name="service_destroyed">ULI Service destroyed.</string>
+        
+<string name="versionString">1.6.40</string>
+<string name="expectedAgentVersionPrefix">UpdateLogic Agent</string>
+<string name="uli_dev_folder">/sdcard/ULI/</string>
+
+<string name="update_notification_string">Update available</string>
+<string name="yes">Yes</string>
+<string name="no">No</string>
+<string name="cancel">Cancel</string>
+<string name="updateQuestion">Do you want to download and install it now?</string>
+<string name="dialog_mandatory_update_notification_string">Your device requires an update.\n\nPlease select \"OK\" to download the update.</string>
+<string name="dialog_optional_update_notification_string">Your device requires an update.\n\nPlease select \"Update Now\" to download the update. \n\nAn new notification will be sent later if you choose to \"Update Later\"</string>
+<string name="while_downloading_mandatory_info_text">Your device is downloading the update.\n\nYou will be asked to restart your device to finish installation after download is complete.\n\nPlease do not power off your device.</string>
+<string name="while_downloading_optional_info_text">Your device is downloading the update.\n\nYou will be asked to restart your device to finish installation after download is complete.\n\nIf you cancel the update, it will be available later.\n\nPlease do not power off your device.</string>
+<string name="before_restart_text">Your device will restart to finish the installation, please do not power off your device.</string>
+<string name="connection_troubleshooting_text">Troubleshooting Tips:\n\n*\tGo to Settings > Wireless &amp; Networks. Choose your network from the list.\n\n*\tYour device may be too far from your wireless network. Move closer to your wireless access point.\n\n*\tYour internet connection may be slow. Try a different network connection or turn off other devices using your network.\n\n*\tYou may have entered the network password incorrectly. Please reconnect to your network using the correct password.</string>
+<string name="connection_error_message">Your internet connection was lost.</string>
+<string name="checking_for_update_text">Your device is checking for updates...</string>
+<string name="system_up_to_date_text">Your device is up to date. No update is necessary.</string>
+<string name="update_zip_disappeared_text">System deleted update. Please use System Update to try again.</string>
+<string name="init_error_message">An error has occurred.  It is best to restart your device.\n\nDo you want to restart now?</string>
+<string name="downloading">Downloading</string>
+<string name="validating">Validating</string>
+<string name="do_you_want_to_try_again">Do you want to try again?</string>
+<string name="ok">OK</string>
+<string name="update_now">Update Now</string>
+<string name="update_later">Update Later</string>
+<string name="connection_unavailable">Internet connection unavailable.</string>
+<string name="display_info">Display Info</string>
+<string name="ssl_troubleshooting_text">If you are using a public wifi connection, such as a hotel or coffee shop, you may need to open the browser app and follow the instructions.\n\nAsk the public wifi provider for help if needed.</string>
+
+
+</resources>

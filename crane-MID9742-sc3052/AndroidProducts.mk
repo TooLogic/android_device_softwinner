@@ -1,0 +1,4 @@
+PRODUCT_MAKEFILES := \
+	$(LOCAL_DIR)/crane_MID9742_sc3052.mk
+	
+	

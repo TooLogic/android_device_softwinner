@@ -1,0 +1,45 @@
+-user ikolker -pswd 3D49f9a7
+-oui 0xC09C92 -mg 0x0001
+-in In -out Out
+-for_hardware_models 1 1
+-target 3.2.3.0
+
+-text_id "TEXTID_VERSION"
+-text_id "TEXTID_INFO"
+-text_id "TEXTID_DESCRIPTION"
+
+# 1)
+-version 1
+# 2)
+-for_software_versions 1 1
+# 3)
+#-optional
+#-loop_test
+
+# 4)
+-text_def "TEXTID_VERSION"		"Version-1.0-MU"
+# 5)optional
+-text_def "TEXTID_INFO"			"30-Jun-2011"
+-text_def "TEXTID_DESCRIPTION"          "Description here."
+
+-export
+-cab_name Version-1.0-MU.cab
+-utv_name Version-1.0-MU.utv
+
+###########################################################################
+#
+#  Component definitions
+#
+###########################################################################
+
+{
+ -name "update.zip"
+# 6)
+-file u_v1.0.zip
+
+# 7)
+ -version 1
+ -for_software_versions 1 1
+}
+
+	

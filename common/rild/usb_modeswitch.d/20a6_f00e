@@ -1,0 +1,13 @@
+########################################################
+# ZTE "fff" devices 1
+
+DefaultVendor= 0x20a6
+DefaultProduct=0xf00e
+
+TargetVendor=  0x20a6
+TargetProduct= 0x1105
+
+MessageContent="55534243b0756787000000000000061b000000020000000000000000000000"
+
+CheckSuccess=20
+
